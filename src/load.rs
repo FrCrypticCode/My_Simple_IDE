@@ -15,7 +15,7 @@ pub fn load_editor(ui:&mut Ui,content:&mut String){
     });
 }
 
-pub fn load_onglets(ui:&mut Ui,onglets:&mut MutexGuard<'_,HashMap<String,String>>,content:&mut String,act_ong:&mut String){
+pub fn load_onglets(ui:&mut Ui,onglets:&mut MutexGuard<'_,HashMap<String,Vec<String>>>,content:&mut String,act_ong:&mut String){
     ui.horizontal(|ui|{
         for ong in onglets.iter(){
             let (name,cont) = ong;
@@ -26,7 +26,7 @@ pub fn load_onglets(ui:&mut Ui,onglets:&mut MutexGuard<'_,HashMap<String,String>
                 let n_b = name.clone();
                 let x = ui.add(egui::Button::new(&n_b));
                 if x.clicked(){
-                    *content = cont.to_string();
+                    *content = cont[0].to_string();
                     *act_ong = n_b;
                 }
             } 
@@ -35,7 +35,7 @@ pub fn load_onglets(ui:&mut Ui,onglets:&mut MutexGuard<'_,HashMap<String,String>
 }
 
 
-pub fn load_save_opts(ui:&mut Ui,content:&mut String,file:&mut String,save:&mut bool,err_save:&mut String,no_name:&mut bool,onglets:&mut MutexGuard<'_,HashMap<String,String>>,act_ong:&mut String){
+pub fn load_save_opts(ui:&mut Ui,content:&mut String,file:&mut String,save:&mut bool,err_save:&mut String,no_name:&mut bool,onglets:&mut MutexGuard<'_,HashMap<String,Vec<String>>>,act_ong:&mut String){
     ui.label("Options");
     ui.horizontal(|ui|{
         if ui.button("Save").clicked(){
@@ -63,8 +63,8 @@ pub fn load_save_opts(ui:&mut Ui,content:&mut String,file:&mut String,save:&mut 
             else{
                 for l in onglets.iter(){
                     let (n,c) = l;
-                    *content = c.to_string();
-                    *file = n.to_string();
+                    *content = c[0].to_string();
+                    *file = c[1].to_string();
                     *act_ong = n.to_string();
                     break;
                 }
@@ -74,7 +74,7 @@ pub fn load_save_opts(ui:&mut Ui,content:&mut String,file:&mut String,save:&mut 
     });
 }
 
-pub fn load_search(ui:&mut Ui,f_find:&mut bool,path:&mut String,file:&mut String,content:&mut String,onglets:&Arc<Mutex<HashMap<String,String>>>,act_ong:&mut String){
+pub fn load_search(ui:&mut Ui,f_find:&mut bool,path:&mut String,file:&mut String,content:&mut String,onglets:&Arc<Mutex<HashMap<String,Vec<String>>>>,act_ong:&mut String){
     ui.label("Chemin de votre fichier");
     ui.text_edit_singleline(path);
     if path.len()>0{
@@ -86,7 +86,11 @@ pub fn load_search(ui:&mut Ui,f_find:&mut bool,path:&mut String,file:&mut String
                     *content = x;
                     let n = file.clone().split("/").last().unwrap().to_string();
                     let mut list = onglets.lock().unwrap();
-                    list.insert(n.clone(), content.clone());
+                    let mut arr:Vec<String> = vec![];
+                    arr.resize(2, String::new());
+                    arr[0] = content.clone();
+                    arr[1] = file.clone();
+                    list.insert(n.clone(), arr);
                     *act_ong = n;
                     *f_find = true;
                 },
@@ -98,7 +102,7 @@ pub fn load_search(ui:&mut Ui,f_find:&mut bool,path:&mut String,file:&mut String
     }
 }
 
-pub fn ges_file(ui:&mut Ui,f_find:&bool,path:&mut String,content:&mut String,onglets:&Arc<Mutex<HashMap<String,String>>>,act_ong:&mut String){
+pub fn ges_file(ui:&mut Ui,f_find:&bool,path:&mut String,content:&mut String,onglets:&Arc<Mutex<HashMap<String,Vec<String>>>>,act_ong:&mut String){
     if !f_find{
         ui.colored_label(Color32::from_rgb(255,0,0), "Fichier non trouvé.");
         if ui.button("Créer le fichier ?").clicked(){
@@ -107,7 +111,11 @@ pub fn ges_file(ui:&mut Ui,f_find:&bool,path:&mut String,content:&mut String,ong
                     let n = path.split("/").last().unwrap().to_string();
                     let c = content.clone().to_string();
                     let mut list = onglets.lock().unwrap();
-                    list.insert(n.clone(), c);
+                    let mut arr:Vec<String> = vec![];
+                    arr.resize(2, String::new());
+                    arr[0] = c;
+                    arr[1] = path.clone();
+                    list.insert(n.clone(), arr);
                     *act_ong = n;
                 },
                 Err(_err)=>{}

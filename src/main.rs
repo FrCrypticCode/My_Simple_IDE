@@ -21,7 +21,7 @@ fn main() {
     let mut err_save = String::new();
     let mut no_name = false;
 
-    let mut onglets:Arc<Mutex<HashMap<String,String>>> = Arc::new(Mutex::new(HashMap::new()));
+    let mut onglets:Arc<Mutex<HashMap<String,Vec<String>>>> = Arc::new(Mutex::new(HashMap::new()));
     let mut act_ong = String::new();
 
     let mut clone_ong = onglets.clone();
