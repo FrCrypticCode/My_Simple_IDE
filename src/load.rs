@@ -1,4 +1,4 @@
-use egui::{Ui, Color32, Context};
+use egui::{Ui, Color32, Context,vec2};
 use std::{fs,sync::{Arc,Mutex, MutexGuard},collections::HashMap};
 
 use crate::utils::save_fs;
@@ -34,47 +34,55 @@ pub fn load_onglets(ui:&mut Ui,onglets:&mut MutexGuard<'_,HashMap<String,Vec<Str
     });
 }
 
-
-pub fn load_save_opts(ui:&mut Ui,content:&mut String,file:&mut String,save:&mut bool,err_save:&mut String,no_name:&mut bool,onglets:&mut MutexGuard<'_,HashMap<String,Vec<String>>>,act_ong:&mut String){
-    ui.label("Options");
-    ui.horizontal(|ui|{
-        if ui.button("Save").clicked(){
-            if file.len() == 0{
-                *no_name = true;
-            }
-            else{
-                *no_name = false;
-                save_fs(file, content, save, err_save);
-            }
-        }
-        if ui.button("Close").clicked(){
-            
-            let nf = file.clone().split("/").last().unwrap().to_string();
-            for key in onglets.clone().into_keys(){
-                if key == nf{
-                    onglets.remove(&key);
-                }
-            }
-            if onglets.is_empty(){
-                *content = String::new();
-                *file = String::from("");
-                *act_ong = String::new();
-            }
-            else{
-                for l in onglets.iter(){
-                    let (n,c) = l;
-                    *content = c[0].to_string();
-                    *file = c[1].to_string();
-                    *act_ong = n.to_string();
-                    break;
-                }
-            }
-            
-        }
+pub fn load_no_name(ctx:&Context,f_find:&mut bool,path:&mut String,file:&mut String,content:&mut String,onglets:&Arc<Mutex<HashMap<String,Vec<String>>>>,act_ong:&mut String,act_w:&mut u8){
+    egui::Window::new("Open Options").default_size(vec2(200.0, 150.0)).show(ctx, |ui|{
+        load_search(ui,f_find,path,file,content,onglets,act_ong);
+        ges_file(ui, &f_find,path,content, onglets,act_ong);
+        ui.separator();
+        ui.vertical_centered(|ui|{
+            if ui.button("Close").clicked(){
+                *act_w = 0;
+            }        
+        }); 
     });
 }
 
-pub fn load_search(ui:&mut Ui,f_find:&mut bool,path:&mut String,file:&mut String,content:&mut String,onglets:&Arc<Mutex<HashMap<String,Vec<String>>>>,act_ong:&mut String){
+pub fn load_save_opts(content:&mut String,file:&mut String,save:&mut bool,err_save:&mut String,act_w:&mut u8){
+    if file.len() == 0{
+        *act_w = 2;
+    }
+    else{
+        *act_w = 0;
+        save_fs(file, content, save, err_save);
+    }
+}
+
+pub fn load_close(file:&mut String,onglets:&Arc<Mutex<HashMap<String,Vec<String>>>>,content:&mut String,act_ong:&mut String){          
+    let nf = file.clone().split("/").last().unwrap().to_string();
+    let mut onglets = onglets.lock().unwrap();
+    for key in onglets.clone().into_keys(){
+        if key == nf{
+            onglets.remove(&key);
+        }
+    }
+    if onglets.is_empty(){
+        *content = String::new();
+        *file = String::from("");
+        *act_ong = String::new();
+    }
+    else{
+        for l in onglets.iter(){
+            let (n,c) = l;
+            *content = c[0].to_string();
+            *file = c[1].to_string();
+            *act_ong = n.to_string();
+            break;
+        }
+    }
+}
+
+
+fn load_search(ui:&mut Ui,f_find:&mut bool,path:&mut String,file:&mut String,content:&mut String,onglets:&Arc<Mutex<HashMap<String,Vec<String>>>>,act_ong:&mut String){
     ui.label("Chemin de votre fichier");
     ui.text_edit_singleline(path);
     if path.len()>0{
@@ -102,7 +110,7 @@ pub fn load_search(ui:&mut Ui,f_find:&mut bool,path:&mut String,file:&mut String
     }
 }
 
-pub fn ges_file(ui:&mut Ui,f_find:&bool,path:&mut String,content:&mut String,onglets:&Arc<Mutex<HashMap<String,Vec<String>>>>,act_ong:&mut String){
+fn ges_file(ui:&mut Ui,f_find:&bool,path:&mut String,content:&mut String,onglets:&Arc<Mutex<HashMap<String,Vec<String>>>>,act_ong:&mut String){
     if !f_find{
         ui.colored_label(Color32::from_rgb(255,0,0), "Fichier non trouvé.");
         if ui.button("Créer le fichier ?").clicked(){
@@ -124,13 +132,19 @@ pub fn ges_file(ui:&mut Ui,f_find:&bool,path:&mut String,content:&mut String,ong
     }
 }
 
-pub fn show_req_name(ctx:&Context,no_name:&mut bool,file:&mut String,content:&mut String,save:&mut bool,err_save:&mut String){
+pub fn show_req_name(ctx:&Context,no_name:&mut u8,file:&mut String,content:&mut String,save:&mut bool,err_save:&mut String){
     egui::Window::new("Need name").show(ctx, |ui|{
         ui.text_edit_singleline(file);
-        if ui.button("Confirm").clicked(){
-            save_fs(&file,content,save,err_save);
-            *no_name = false;
-        }
+        ui.horizontal(|ui|{
+            if ui.button("Confirm").clicked(){
+                save_fs(&file,content,save,err_save);
+                *no_name = 0;
+            }
+            if ui.button("Abort").clicked(){
+                *no_name = 0;
+            }
+        });
+        
     });
 }
 
