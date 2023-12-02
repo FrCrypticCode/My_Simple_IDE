@@ -1,10 +1,12 @@
 use eframe::*;
-use egui::{Color32, Visuals};
+use egui::Visuals;
 use std::collections::HashMap;
 use std::sync::{Arc,Mutex};
 mod load;
 use load::{load_editor,load_close,load_onglets,load_no_name,load_save_opts,show_err_save, show_req_name};
 mod utils;
+mod term;
+use term::load_term;
 
 
 fn main() {
@@ -19,12 +21,13 @@ fn main() {
     let mut f_find = true;
     let mut save = false;
     let mut err_save = String::new();
+    let mut term = String::new();
+    let mut term_cmd = String::new();
 
     let onglets:Arc<Mutex<HashMap<String,Vec<String>>>> = Arc::new(Mutex::new(HashMap::new()));
     let mut act_ong = String::new();
     let mut act_w:u8 = 0;
     let mut act_t = false;
-    let mut test = String::new();
 
     let clone_ong = onglets.clone();
     // let mut params:(f32,f32);    Rendre resizable la page
@@ -83,25 +86,8 @@ fn main() {
         }
 
         if act_t{
-            egui::TopBottomPanel::bottom("Terminal").show(ctx,|ui|{
-                if save{
-                    show_err_save(ui, &save, &err_save);
-                }
-                ui.add(egui::TextEdit::multiline(&mut test)
-                    .desired_width(700.0)
-                    .code_editor()
-                    .text_color(Color32::from_rgb(180, 25, 25)));
-                ui.vertical_centered(|ui|{
-                    if ui.button("Close").clicked(){
-                        act_t = false;
-                    }
-                });
-            });
-        }
-        
-        if ctx.input(|k| k.key_pressed(egui::Key::F1)){
-                
-        }                  
+            load_term(&ctx, save, &err_save,&mut term, &mut term_cmd,&mut act_t)
+        }                
                 
     });
             
