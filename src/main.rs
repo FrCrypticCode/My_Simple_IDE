@@ -1,9 +1,9 @@
 use eframe::*;
-use egui::Visuals;
+use egui::{Visuals, vec2};
 use std::collections::HashMap;
 use std::sync::{Arc,Mutex};
 mod load;
-use load::{load_editor,load_close,load_onglets,load_no_name,load_save_opts,show_err_save, show_req_name};
+use load::{load_editor,load_close,load_onglets,load_no_name,load_save_opts,show_err_save, show_req_name,show_opts};
 mod utils;
 mod term;
 use term::load_term;
@@ -23,7 +23,11 @@ fn main() {
     let mut err_save = String::new();
     let mut term = String::new();
     let mut term_cmd = String::new();
-
+    let mut curr_path = std::env::current_dir().unwrap().to_str().unwrap().to_string();
+    let mut size_w:(f32,f32) = (1024.0,768.0);
+    let mut width = String::new();
+    let mut height = String::new();
+    let mut err_opts = false;
     let onglets:Arc<Mutex<HashMap<String,Vec<String>>>> = Arc::new(Mutex::new(HashMap::new()));
     let mut act_ong = String::new();
     let mut act_w:u8 = 0;
@@ -33,9 +37,11 @@ fn main() {
     // let mut params:(f32,f32);    Rendre resizable la page
     let window = eframe::run_simple_native("Mon IDE", opts, move |ctx,frame|{
         ctx.set_visuals(Visuals::dark());
+        let (w,h) = size_w;
+        frame.set_window_size(vec2(w, h));
         egui::CentralPanel::default().show(ctx, |ui|{
             ui.horizontal(|ui|{
-                ui.menu_button("Fichier",|ui|{
+                ui.menu_button("File",|ui|{
                     if ui.button("Open").clicked(){
                         act_w = 1;
                         ui.close_menu()
@@ -46,6 +52,10 @@ fn main() {
                     }
                     if ui.button("Close File").clicked(){
                         load_close(&mut file, &onglets, &mut content, &mut act_ong);
+                        ui.close_menu()
+                    }
+                    if ui.button("Options").clicked(){
+                        act_w = 3;
                         ui.close_menu()
                     }
                     if ui.button("Quit").clicked(){
@@ -66,10 +76,10 @@ fn main() {
             let mut clone_ong = clone_ong.lock().unwrap();
             if clone_ong.len() != 0{
                 load_onglets(ui, &mut clone_ong, &mut content, &mut act_ong);
-                load_editor(ui, &mut content);
+                load_editor(ui, &mut content,&size_w);
             }
             else{
-                load_editor(ui, &mut content);
+                load_editor(ui, &mut content,&size_w);
             }
             
         });
@@ -82,11 +92,14 @@ fn main() {
             2=>{
                 show_req_name(ctx, &mut act_w, &mut file, &mut content, &mut save, &mut err_save);
             },
+            3=>{
+                show_opts(ctx, &mut size_w,&mut width,&mut height,&mut err_opts,&mut act_w);
+            }
             _=>{}
         }
 
         if act_t{
-            load_term(&ctx, save, &err_save,&mut term, &mut term_cmd,&mut act_t)
+            load_term(&ctx, save, &err_save,&mut term, &mut term_cmd,&mut act_t,&mut curr_path,&size_w)
         }                
                 
     });

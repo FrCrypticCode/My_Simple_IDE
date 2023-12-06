@@ -1,47 +1,58 @@
 use std::process::Command;
-use std::env::current_exe;
+
 use crate::egui::{Context,Color32};
 use crate::show_err_save;
 
-pub fn load_term(ctx:&Context,save:bool,err_save:&String,tes:&mut String,term_cmd:&mut String,act_t:&mut bool){
+pub fn load_term(ctx:&Context,save:bool,err_save:&String,tes:&mut String,term_cmd:&mut String,act_t:&mut bool,curr_path:&mut String,size_w:&(f32,f32)){
+    let (w,_h) = *size_w;
     egui::TopBottomPanel::bottom("Terminal").show(ctx,|ui|{
+        ui.set_height(200.0);
+        ui.separator();
         if save{
             show_err_save(ui, &save, &err_save);
         }
-        egui::ScrollArea::new([true,true]).show(ui, |ui|{
-            ui.set_max_height(50.0);
+        egui::ScrollArea::new([false,true]).show(ui, |ui|{
+            ui.set_max_height(100.0);
             let _ = ui.add(egui::TextEdit::multiline(tes)
-            .desired_width(700.0)
+            .desired_width(ui.available_width())
             .desired_rows(5)
             .code_editor()
             .text_color(Color32::from_rgb(180, 25, 25)))
-            
             .interact(egui::Sense { click: false, drag: false, focusable: false });
         });
         ui.separator();
-        let term = ui.text_edit_singleline(term_cmd);
-        if term_cmd.len() != 0 && term.ctx.input(|k| k.key_down(egui::Key::Enter)){
-            // Gestion de l'envoi de cmd
-            // Split la cmd puis expédier les parts à use proc
-            let rep = use_proc(term_cmd.clone());
-            *tes += &term_cmd;
-            *tes += "\n";
-            *tes += &rep;
-            *tes += "\n";
-            *term_cmd = String::new(); 
-        }
-        ui.vertical_centered(|ui|{
-            if ui.button("Close").clicked(){
-                *act_t = false;
+
+            ui.label("Chemin :");
+            let _ = ui.add(egui::TextEdit::singleline(curr_path)
+                .desired_width(w)
+                .code_editor()
+            );
+            ui.separator();
+            let term = ui.add(egui::TextEdit::singleline(term_cmd)
+                .desired_width(w)
+                .code_editor()
+            );
+            if term_cmd.len() != 0 && term.ctx.input(|k| k.key_down(egui::Key::Enter)){
+                // Gestion de l'envoi de cmd
+                // Split la cmd puis expédier les parts à use proc
+                let rep = use_proc(term_cmd.clone(),curr_path);
+                *tes += &term_cmd;
+                *tes += "\n";
+                *tes += &rep;
+                *tes += "\n";
+                *tes += "Task Done\n";
+                *term_cmd = String::new(); 
             }
-        });
+            ui.vertical_centered(|ui|{
+                if ui.button("Close").clicked(){
+                    *act_t = false;
+                }
+            });
+        
     });
 }
 
-fn use_proc(str:String)->String{
-    let path = current_exe().unwrap();
-    let path = path.parent().unwrap();
-    println!("{:?}",path);
+fn use_proc(str:String,path:&mut String)->String{
     let par = str.split(' ');
     let mut cmd:Vec<&str> = vec![];
     for arg in par{
