@@ -171,7 +171,9 @@ pub fn show_opts(ctx:&Context,size_w:&mut (f32,f32),width:&mut String,height:&mu
                     Ok(x)=>{*h = x},
                     Err(_err)=>{*err_opts = true}
                 };
-                *act_w = 0;
+                if *err_opts != true{
+                    *act_w = 0;
+                }
             }
             if ui.button("Close").clicked(){
                 *act_w = 0;

@@ -1,13 +1,12 @@
 use eframe::*;
 use egui::{Visuals, vec2};
-use std::collections::HashMap;
-use std::sync::{Arc,Mutex};
 mod load;
 use load::{load_editor,load_close,load_onglets,load_no_name,load_save_opts,show_err_save, show_req_name,show_opts};
 mod utils;
 mod term;
 use term::load_term;
-
+mod obj;
+use obj::init;
 
 fn main() {
     let opts = NativeOptions{
@@ -15,47 +14,32 @@ fn main() {
         transparent:true,
         ..Default::default()
     };
-    let mut content = String::new();
-    let mut path = String::new();
-    let mut file = String::new();
-    let mut f_find = true;
-    let mut save = false;
-    let mut err_save = String::new();
-    let mut term = String::new();
-    let mut term_cmd = String::new();
-    let mut curr_path = std::env::current_dir().unwrap().to_str().unwrap().to_string();
-    let mut size_w:(f32,f32) = (1024.0,768.0);
-    let mut width = String::new();
-    let mut height = String::new();
-    let mut err_opts = false;
-    let onglets:Arc<Mutex<HashMap<String,Vec<String>>>> = Arc::new(Mutex::new(HashMap::new()));
-    let mut act_ong = String::new();
-    let mut act_w:u8 = 0;
-    let mut act_t = false;
 
-    let clone_ong = onglets.clone();
-    // let mut params:(f32,f32);    Rendre resizable la page
+    let (mut window, mut data, mut term) = init();
+
+    let clone_ong = data.onglets.clone();
+
     let window = eframe::run_simple_native("Mon IDE", opts, move |ctx,frame|{
         ctx.set_visuals(Visuals::dark());
-        let (w,h) = size_w;
+        let (w,h) = window.get_size();
         frame.set_window_size(vec2(w, h));
         egui::CentralPanel::default().show(ctx, |ui|{
             ui.horizontal(|ui|{
                 ui.menu_button("File",|ui|{
                     if ui.button("Open").clicked(){
-                        act_w = 1;
+                        window.act = 1;
                         ui.close_menu()
                     }
                     if ui.button("Save").clicked(){
-                        load_save_opts(&mut content, &mut file, &mut save, &mut err_save,&mut act_w);  // A revoir
+                        load_save_opts(&mut data.content, &mut data.file, &mut window.save, &mut window.err_save,&mut window.act);  // A revoir
                         ui.close_menu()
                     }
                     if ui.button("Close File").clicked(){
-                        load_close(&mut file, &onglets, &mut content, &mut act_ong);
+                        load_close(&mut data.file, &data.onglets, &mut data.content, &mut data.act_ong);
                         ui.close_menu()
                     }
                     if ui.button("Options").clicked(){
-                        act_w = 3;
+                        window.act = 3;
                         ui.close_menu()
                     }
                     if ui.button("Quit").clicked(){
@@ -63,11 +47,11 @@ fn main() {
                     }
                 });
                 if ui.button("Terminal").clicked(){
-                    if act_t{
-                        act_t = false;
+                    if term.act{
+                        term.act = false;
                     }
                     else{
-                        act_t = true;
+                        term.act = true;
                     }
                     ui.close_menu()
                 }
@@ -75,31 +59,31 @@ fn main() {
             ui.separator();
             let mut clone_ong = clone_ong.lock().unwrap();
             if clone_ong.len() != 0{
-                load_onglets(ui, &mut clone_ong, &mut content, &mut act_ong);
-                load_editor(ui, &mut content,&size_w);
+                load_onglets(ui, &mut clone_ong, &mut data.content, &mut data.act_ong);
+                load_editor(ui, &mut data.content,&window.get_size());
             }
             else{
-                load_editor(ui, &mut content,&size_w);
+                load_editor(ui, &mut data.content,&window.get_size());
             }
             
         });
 
-        match act_w{
+        match window.act{
             0=>{},
             1=>{
-                load_no_name(ctx, &mut f_find, &mut path, &mut file, &mut content, &onglets, &mut act_ong, &mut act_w);
+                load_no_name(ctx, &mut window.f_find, &mut data.path, &mut data.file, &mut data.content, &data.onglets, &mut data.act_ong, &mut window.act);
             },
             2=>{
-                show_req_name(ctx, &mut act_w, &mut file, &mut content, &mut save, &mut err_save);
+                show_req_name(ctx, &mut window.act, &mut data.file, &mut data.content, &mut window.save, &mut window.err_save);
             },
             3=>{
-                show_opts(ctx, &mut size_w,&mut width,&mut height,&mut err_opts,&mut act_w);
+                show_opts(ctx, &mut window.get_size(),&mut window.width,&mut window.height,&mut window.err_opts,&mut window.act);
             }
             _=>{}
         }
 
-        if act_t{
-            load_term(&ctx, save, &err_save,&mut term, &mut term_cmd,&mut act_t,&mut curr_path,&size_w)
+        if term.act{
+            load_term(&ctx, window.save, &window.err_save,&mut term.t, &mut term.t_cmd,&mut term.act,&mut term.curr_path,&window.get_size())
         }                
                 
     });
@@ -109,5 +93,3 @@ fn main() {
         Err(err)=>{panic!("Erreur critique : {err}")}
     }
 }
-
-// Construire la struct pour regrouper les variables
