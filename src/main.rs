@@ -1,72 +1,90 @@
 use eframe::*;
-use egui::{panel::Side,Id};
-use std::collections::HashMap;
-use std::sync::{Arc,Mutex};
+use egui::{Visuals, vec2};
 mod load;
-use load::{load_editor,load_search,load_onglets,load_save_opts,ges_file,show_err_save, show_req_name};
+use load::{load_editor,load_close,load_onglets,load_no_name,load_save_opts,show_err_save, show_req_name,show_opts};
 mod utils;
-
+mod term;
+use term::load_term;
+mod obj;
+use obj::init;
 
 fn main() {
     let opts = NativeOptions{
-        initial_window_size:Some(egui::vec2(1024.0, 768.0)),
+        default_theme:Theme::Dark,
         transparent:true,
         ..Default::default()
     };
-    let mut content = String::new();
-    let mut path = String::new();
-    let mut file = String::new();
-    let mut f_find = true;
-    let mut save = false;
-    let mut err_save = String::new();
-    let mut no_name = false;
 
-    let mut onglets:Arc<Mutex<HashMap<String,Vec<String>>>> = Arc::new(Mutex::new(HashMap::new()));
-    let mut act_ong = String::new();
+    let (mut window, mut data, mut term) = init();
 
-    let mut clone_ong = onglets.clone();
-    // let mut params:(f32,f32);    Rendre resizable la page
+    let clone_ong = data.onglets.clone();
+
     let window = eframe::run_simple_native("Mon IDE", opts, move |ctx,frame|{
-        frame.set_centered();
-        let s = Side::Left;
-        egui::SidePanel::new(s,Id::new("menu")).default_width(150.0).show(ctx,|ui|{
-            load_search(ui, &mut f_find, &mut path, &mut file, &mut content, &mut onglets, &mut act_ong);
-            ges_file(ui, &f_find, &mut path, &mut content, &mut clone_ong, &mut act_ong);
-            ui.separator();
-            ui.vertical_centered(|ui|{
-                if ui.button("Quit").clicked(){
-                    frame.close();
-                }        
-            });  
-        });
-        
+        ctx.set_visuals(Visuals::dark());
+        let (w,h) = window.get_size();
+        frame.set_window_size(vec2(w, h));
         egui::CentralPanel::default().show(ctx, |ui|{
+            ui.horizontal(|ui|{
+                ui.menu_button("File",|ui|{
+                    if ui.button("Open").clicked(){
+                        window.act = 1;
+                        ui.close_menu()
+                    }
+                    if ui.button("Save").clicked(){
+                        load_save_opts(&mut data.content, &mut data.file, &mut window.save, &mut window.err_save,&mut window.act);  // A revoir
+                        ui.close_menu()
+                    }
+                    if ui.button("Close File").clicked(){
+                        load_close(&mut data.file, &data.onglets, &mut data.content, &mut data.act_ong);
+                        ui.close_menu()
+                    }
+                    if ui.button("Options").clicked(){
+                        window.act = 3;
+                        ui.close_menu()
+                    }
+                    if ui.button("Quit").clicked(){
+                        frame.close()
+                    }
+                });
+                if ui.button("Terminal").clicked(){
+                    if term.act{
+                        term.act = false;
+                    }
+                    else{
+                        term.act = true;
+                    }
+                    ui.close_menu()
+                }
+            });
+            ui.separator();
             let mut clone_ong = clone_ong.lock().unwrap();
             if clone_ong.len() != 0{
-                load_onglets(ui, &mut clone_ong, &mut content, &mut act_ong);
-                load_editor(ui, &mut content);
-                egui::SidePanel::new(Side::Right,Id::new("opts_f")).default_width(50.0).show(ctx, |ui|{
-                    load_save_opts(ui, &mut content, &mut file, &mut save, &mut err_save, &mut no_name, &mut clone_ong, &mut act_ong);
-                    show_err_save(ui, &save, &err_save);
-                });
+                load_onglets(ui, &mut clone_ong, &mut data.content, &mut data.act_ong);
+                load_editor(ui, &mut data.content,&window.get_size());
             }
             else{
-                load_editor(ui, &mut content);
-                egui::SidePanel::new(Side::Right,Id::new("opts_f")).default_width(50.0).show(ctx, |ui|{
-                    load_save_opts(ui, &mut content, &mut file, &mut save, &mut err_save, &mut no_name, &mut clone_ong, &mut act_ong);
-                    show_err_save(ui, &save, &err_save);
-                });
+                load_editor(ui, &mut data.content,&window.get_size());
             }
             
         });
-        
-        if no_name{
-            show_req_name(ctx, &mut no_name, &mut file, &mut content, &mut save, &mut err_save);
+
+        match window.act{
+            0=>{},
+            1=>{
+                load_no_name(ctx, &mut window.f_find, &mut data.path, &mut data.file, &mut data.content, &data.onglets, &mut data.act_ong, &mut window.act);
+            },
+            2=>{
+                show_req_name(ctx, &mut window.act, &mut data.file, &mut data.content, &mut window.save, &mut window.err_save);
+            },
+            3=>{
+                show_opts(ctx, &mut window.get_size(),&mut window.width,&mut window.height,&mut window.err_opts,&mut window.act);
+            }
+            _=>{}
         }
-        
-        if ctx.input(|k| k.key_pressed(egui::Key::F1)){
-                
-        }                  
+
+        if term.act{
+            load_term(&ctx, window.save, &window.err_save,&mut term.t, &mut term.t_cmd,&mut term.act,&mut term.curr_path,&window.get_size())
+        }                
                 
     });
             
@@ -75,11 +93,3 @@ fn main() {
         Err(err)=>{panic!("Erreur critique : {err}")}
     }
 }
-
-
-// Intégrer le changement de dimensions de la fenêtre
-// Appliquer le thème
-
-// Développer l'interface pour accroitre les fonctionnalités
-
-// Construire la struct pour regrouper les variables
