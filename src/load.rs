@@ -153,7 +153,9 @@ pub fn show_req_name(ctx:&Context,no_name:&mut u8,file:&mut String,content:&mut 
 pub fn show_opts(ctx:&Context,size_w:&mut (f32,f32),width:&mut String,height:&mut String,err_opts:&mut bool,act_w:&mut u8){
     let (w,h) = size_w;
     egui::Window::new("Options").show(ctx, |ui|{
+        ui.label("Width :");
         ui.text_edit_singleline(width);
+        ui.label("Height :");
         ui.text_edit_singleline(height);
         if *err_opts{
             ui.label("Values need to respect float syntax.");
